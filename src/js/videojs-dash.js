@@ -38,7 +38,7 @@
    */
   function Html5DashJS (source, tech) {
     var
-      options = tech.options(),
+      options = tech.options_,
       manifestSource;
 
     this.tech_ = tech;
@@ -144,7 +144,7 @@
    * Iterate over the `keySystemOptions` array and convert each object into
    * the type of object Dash.js expects in the `protData` argument.
    *
-   * Also rename 'licenseUrl' property in the options to an 'laURL' property
+   * Also rename 'licenseUrl' property in the options to an 'serverURL' property
    */
   Html5DashJS.buildDashJSProtData = function (keySystemOptions) {
     var
@@ -162,7 +162,7 @@
       options = mergeOptions({}, keySystem.options);
 
       if (options.licenseUrl) {
-        options.laURL = options.licenseUrl;
+        options.serverURL = options.licenseUrl;
         delete options.licenseUrl;
       }
 
@@ -200,14 +200,12 @@
     this.resetSrc_(function noop(){});
   };
 
-  // Only add the SourceHandler if the browser supports MediaSourceExtensions
-  if (!!window.MediaSource) {
-    videojs.Html5.registerSourceHandler({
+  videojs.DashSourceHandler = function() {
+    return {
       canHandleSource: function (source) {
-        var dashTypeRE = /^application\/dash\+xml/i;
         var dashExtRE = /\.mpd/i;
 
-        if (dashTypeRE.test(source.type)) {
+        if (videojs.DashSourceHandler.canPlayType(source.type)) {
           return 'probably';
         } else if (dashExtRE.test(source.src)){
           return 'maybe';
@@ -218,8 +216,26 @@
 
       handleSource: function (source, tech) {
         return new Html5DashJS(source, tech);
+      },
+
+      canPlayType: function (type) {
+        return videojs.DashSourceHandler.canPlayType(type);
       }
-    }, 0);
+    };
+  };
+
+  videojs.DashSourceHandler.canPlayType = function (type) {
+    var dashTypeRE = /^application\/dash\+xml/i;
+    if (dashTypeRE.test(type)) {
+      return 'probably';
+    }
+
+    return '';
+  };
+
+  // Only add the SourceHandler if the browser supports MediaSourceExtensions
+  if (!!window.MediaSource) {
+    videojs.getComponent('Html5').registerSourceHandler(videojs.DashSourceHandler(), 0);
   }
 
   videojs.Html5DashJS = Html5DashJS;
